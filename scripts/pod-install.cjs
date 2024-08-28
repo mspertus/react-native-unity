@@ -1,40 +1,36 @@
-const child_process = require('child_process');
+const { execSync } = require('child_process');
+const fs = require('fs');
+const path = require('path');
+
+function podInstall() {
+  if (process.platform !== 'darwin') {
+    console.log('Skipping pod install on non-macOS platform');
+    return;
+  }
+
+  const projectRoot = process.cwd();
+  const iosRoot = path.join(projectRoot, 'example', 'ios');
+
+  if (!fs.existsSync(iosRoot)) {
+    console.log(`iOS project not found at ${iosRoot}`);
+    return;
+  }
+
+  console.log('Installing pods...');
+  try {
+    execSync('pod install', { cwd: iosRoot, stdio: 'inherit' });
+    console.log('Pods installed successfully');
+  } catch (error) {
+    console.error('Failed to install pods:', error.message);
+    process.exit(1);
+  }
+}
 
 module.exports = {
   name: 'pod-install',
-  factory() {
-    return {
-      hooks: {
-        afterAllInstalled(project, options) {
-          if (process.env.POD_INSTALL === '0') {
-            return;
-          }
-
-          if (
-            options &&
-            (options.mode === 'update-lockfile' ||
-              options.mode === 'skip-build')
-          ) {
-            return;
-          }
-
-          const result = child_process.spawnSync(
-            'yarn',
-            ['pod-install', 'example/ios'],
-            {
-              cwd: project.cwd,
-              env: process.env,
-              stdio: 'inherit',
-              encoding: 'utf-8',
-              shell: true,
-            }
-          );
-
-          if (result.status !== 0) {
-            throw new Error('Failed to run pod-install');
-          }
-        },
-      },
-    };
-  },
+  factory: () => ({
+    hooks: {
+      afterAllInstalled: podInstall,
+    },
+  }),
 };
